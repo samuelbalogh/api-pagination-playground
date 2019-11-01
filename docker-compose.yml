@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+    db: &db
+      # Prebuilt postgres image from Dockerhub
+      # Using this instead of the standard `postgres` one to easily enable the uuid extension.
+      image: frodenas/postgresql
+      ports:
+        - "5432:5432"
+      environment:
+        POSTGRES_USERNAME: calendar     
+        POSTGRES_PASSWORD: calendar
+        POSTGRES_DBNAME: postgres
+        POSTGRES_EXTENSIONS: uuid-ossp
+
+      container_name: db
