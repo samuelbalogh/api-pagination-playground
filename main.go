@@ -33,9 +33,9 @@ type dbResponse struct {
 }
 
 
-func decodeCursor(encodedCursor string) ([]byte){
+func decodeCursor(encodedCursor string) (string){
   decoded, _ := base64.StdEncoding.DecodeString(encodedCursor)   
-  return decoded
+  return string(decoded)
 }
 
 
@@ -45,43 +45,66 @@ func GetEvents(w http.ResponseWriter, r *http.Request) {
 	var events = []Event{}
   var results *gorm.DB
 
-  ////
-  // Experimenting with different sorting keys and directions
-  ////
-  // db = db.Order("updated_at desc")
-  // db = db.Order("updated_at asc")
-  // db = db.Order("created_at desc").Order("id")
-  db = db.Order("created_at asc").Order("id asc")
-  // db = db.Order("id asc")
-
-
-  // Experimenting with pagination methods
   // 1) Offset + limit pagination - inefficient and prone to error
-  limit := r.FormValue("limit")
   offset := r.FormValue("offset")
   if (offset != "") {
     db = db.Offset(offset)
   }
-  if (limit != "") {
-    db = db.Limit(limit)
-  }
 
-  // 2) Cursor (keyset, seek) pagination - efficient and reliable
+  // 2) Cursor (keyset, seek) pagination - efficient and reliable, 
+  // but pushes some logic to the client, and does not support flexible ordering
   cursor := r.FormValue("cursor")
   if (cursor != "") {
+    // The cursor in this case is a base64-encoded composite key, made up of the
+    // 1) created_at and 2) id of the last record. 
+    // This is to ensure that  we have unique cursors (there can be records with the same created_at)
+    // NOTE: this implementation exposes the internal UUID of records in an encoded form - 
+    // this is not a good practice and ideally it would be encrypted before sending to the client,
+    // and decrypted when received.
     decoded := decodeCursor(cursor)
+    createdAt := strings.Split(decoded, "#")[0]
+    id := strings.Split(decoded, "#")[1]
+    db = db.Where("created_at >= ? and (id > ? or created_at > ?)", createdAt, id, createdAt)
 
-	  log.Printf("to update: %v", decoded)
-    db = db.Where("created_at >= ?", decoded)
+    // We have to ensure consistent ordering for this to work
+    db = db.Order("created_at asc").Order("id asc")
   }
+
+  if (offset == "" && cursor == "") { 
+    db = db.Order("created_at asc").Order("id asc") 
+  }
+
+  db.LogMode(true)
+  orderby := r.FormValue("orderby")
+  if (orderby != "") {
+    // WARNING: don't do this in production ever - don't accept arbitrary values and pass them to SQL as here.
+    // This is used only for making experimentation with ordering easier.
+    db = db.Order(orderby)
+  } 
+
+  limit := r.FormValue("limit")
+  if (limit != "") {
+    db = db.Limit(limit)
+  } else {
+    db = db.Limit(10000)
+  }
+
 	results = db.Find(&events)
-  lastRecord := &events[len(events)-1]
-  newCursor := lastRecord.CreatedAt.String()
+  var dbResp dbResponse
+  if (len(events) == 0) {
+    dbResp = dbResponse{DB: results, Cursor: ""}
+  } else {
+    lastRecord := &events[len(events)-1]
+    lastCreatedAt := lastRecord.CreatedAt.Format("2006-01-02T15:04:05.000000")
+    lastId := lastRecord.ID
+    newCursor := lastCreatedAt + "#" + lastId.String()
   
-  var dbResponse = dbResponse{
-    DB: results,
-    Cursor: base64.StdEncoding.EncodeToString([]byte(newCursor))}
-	json.NewEncoder(w).Encode(dbResponse)
+    dbResp = dbResponse{
+      DB: results,
+      Cursor: base64.StdEncoding.EncodeToString([]byte(newCursor))}
+  }
+
+	json.NewEncoder(w).Encode(dbResp)
 }
 
 func GetEventCount(w http.ResponseWriter, r *http.Request) {
