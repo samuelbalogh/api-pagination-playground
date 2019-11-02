@@ -23,10 +23,9 @@ def create_events(count=10):
     requests.post(f"{API_URI}/fakedata", data=payload)
 
 def run():
-    create_events(count=random.randint(100, 300))
     while True:
         try:
-            if random.randint(0, 10) == 1:
+            if random.randint(0, 10) < 5:
                 create_events(count=random.randint(1, 10))
             events = get_events(limit=100)
             if not events:

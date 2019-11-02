@@ -7,8 +7,18 @@ HOST = "localhost"
 PORT = 8000
 API_URI = f"http://{HOST}:{PORT}"
 
-LIMIT = 50
+LIMIT = 500
 
+def timeit(method):
+    def timed(*args, **kw):
+        start = time.time()
+        result = method(*args, **kw)
+        end = time.time()
+        print(f"{method.__name__, round(end - start, 2)} seconds")
+        return result
+    return timed
+
+@timeit
 def offset_paginate(orderby=None):
     events = []
     finished = False
@@ -19,14 +29,14 @@ def offset_paginate(orderby=None):
         response = requests.get(f"{API_URI}/events?limit={LIMIT}&offset={offset}&orderby={orderby}").json()
         offset += LIMIT
         events.extend(response.get("Value"))
-        time.sleep(.1)
         if len(response.get("Value")) < LIMIT:
             finished = True
-            total_count = requests.get(f"{API_URI}/events_count").json()
+            total_count = int(response.get("Count"))
     _print_results(total_count, events, "offset", orderby)
     return events
 
-def keyset_paginate(orderby=None):
+@timeit
+def keyset_paginate():
     events = []
     response = requests.get(f"{API_URI}/events?limit={LIMIT}").json()
     events.extend(response.get("Value"))
@@ -36,11 +46,10 @@ def keyset_paginate(orderby=None):
         response = requests.get(f"{API_URI}/events?limit={LIMIT}&cursor={cursor}").json()
         cursor = response.get("Cursor")
         events.extend(response.get("Value"))
-        time.sleep(.1)
         if len(response.get("Value")) < LIMIT:
             finished = True
-            total_count = requests.get(f"{API_URI}/events_count").json()
-    _print_results(total_count, events, "keyset", orderby)
+            total_count = int(response.get("Count"))
+    _print_results(total_count, events, "keyset", orderby="default as per implementation")
 
 
 def _print_results(total_count, events, pagination_method, orderby="default"):

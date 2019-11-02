@@ -30,6 +30,7 @@ func getIDFromRequest(request *http.Request) string {
 type dbResponse struct {
     *gorm.DB
     Cursor string
+    Count uint
 }
 
 
@@ -89,10 +90,12 @@ func GetEvents(w http.ResponseWriter, r *http.Request) {
     db = db.Limit(10000)
   }
 
+  count := GetEventCount()
+
 	results = db.Find(&events)
   var dbResp dbResponse
   if (len(events) == 0) {
-    dbResp = dbResponse{DB: results, Cursor: ""}
+    dbResp = dbResponse{DB: results, Cursor: "", Count: count}
   } else {
     lastRecord := &events[len(events)-1]
     lastCreatedAt := lastRecord.CreatedAt.Format("2006-01-02T15:04:05.000000")
@@ -101,18 +104,18 @@ func GetEvents(w http.ResponseWriter, r *http.Request) {
   
     dbResp = dbResponse{
       DB: results,
-      Cursor: base64.StdEncoding.EncodeToString([]byte(newCursor))}
+      Cursor: base64.StdEncoding.EncodeToString([]byte(newCursor)),
+      Count: count}
   }
-
 	json.NewEncoder(w).Encode(dbResp)
 }
 
-func GetEventCount(w http.ResponseWriter, r *http.Request) {
+func GetEventCount() uint {
 	db := getDB()
 	defer db.Close()
   var count uint
 	db.Model(&Event{}).Count(&count)
-	json.NewEncoder(w).Encode(count)
+  return count
 }
 
 func UpdateEvent(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +154,6 @@ func main() {
 	// Events
 	router.HandleFunc("/events", GetEvents).Methods("GET")
 	router.HandleFunc("/events/{id}", UpdateEvent).Methods("PUT")
-	router.HandleFunc("/events_count", GetEventCount).Methods("GET")
 	router.HandleFunc("/fakedata", createFakeEvent).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":8000", router))
