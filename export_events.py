@@ -64,8 +64,8 @@ def _print_results(total_count, events, pagination_method, orderby="default"):
 
 if __name__ == "__main__":
     offset_paginate()
-    offset_paginate(orderby="updated_at desc")
     offset_paginate(orderby="updated_at asc")
-    offset_paginate(orderby="created_at asc")
     offset_paginate(orderby="updated_at desc")
+    offset_paginate(orderby="created_at asc")
+    offset_paginate(orderby="created_at desc")
     keyset_paginate()
