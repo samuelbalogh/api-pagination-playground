@@ -10,6 +10,7 @@ There are three components:
 
 You will need [goose](https://github.com/pressly/goose#install), docker-compose, Go and Python3.
 
+- `go get -u github.com/pressly/goose/cmd/goose`
 - `docker-compose up`
 - `goose -dir migrations/ postgres "user=calendar dbname=postgres sslmode=disable password=calendar" reset`
 - `goose -dir migrations/ postgres "user=calendar dbname=postgres sslmode=disable password=calendar" up`
