@@ -1,6 +1,6 @@
 # API pagination playground
 
-An experimentation in API pagination and its pitfalls.
+This is a repo to tinker with API pagination. It was the basis of my blog post here: https://www.samu.space/api-pagination/. 
 
 There are three components:
 
