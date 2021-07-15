@@ -5,8 +5,8 @@ This is a repo to tinker with API pagination. It was the basis of my blog post h
 There are three components:
 
 1) A Go backend API which handles requests
-2) A Python client who constantly hammers the API and updates & creates records.
-3) A Python client who tries to export all the data via API pagination. 
+2) A Python client which constantly hammers the API and updates & creates records.
+3) A Python client which tries to export all the data via API pagination. 
 
 You will need [goose](https://github.com/pressly/goose#install), docker-compose, Go and Python3.
 
